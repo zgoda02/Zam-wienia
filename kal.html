@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Zamówieniami</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #581c87 50%, #1e293b 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            color: #c4b5fd;
+        }
+
+        .login-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .login-btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .guest-btn {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #86efac;
+        }
+
+        .guest-btn:hover {
+            background: rgba(34, 197, 94, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .admin-btn {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(196, 181, 253, 0.3);
+            color: #c4b5fd;
+        }
+
+        .admin-btn:hover {
+            background: rgba(168, 85, 247, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .main-app {
+            display: none;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-icon {
+            background: rgba(168, 85, 247, 0.2);
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-badge {
+            background: rgba(249, 115, 22, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            color: #fed7aa;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .admin-btn-control {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(196, 181, 253, 0.3);
+            color: #c4b5fd;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .admin-btn-control:hover {
+            background: rgba(168, 85, 247, 0.3);
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .category-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #c4b5fd;
+            border-bottom: 2px solid rgba(196, 181, 253, 0.3);
+            padding-bottom: 0.5rem;
+        }
+
+        .add-item-btn {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #86efac;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        .add-item-btn:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .item-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .item-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .item-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            cursor: text;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .item-name.editable:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .item-name[contenteditable="true"] {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(147, 197, 253, 0.3);
+        }
+
+        .delete-item-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .delete-item-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .item-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .control-btn {
+            width: 2rem;
+            height: 2rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn.minus {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .control-btn.minus:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .control-btn.plus {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        .control-btn.plus:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .item-count {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-width: 3rem;
+            text-align: center;
+        }
+
+        .price-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .price-tier {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+        }
+
+        .price-value {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: bold;
+            cursor: text;
+            transition: all 0.3s ease;
+        }
+
+        .price-value.editable:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .price-value[contenteditable="true"] {
+            background: rgba(34, 197, 94, 0.3);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .controls-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .left-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .member-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .member-select option {
+            background: #1e293b;
+            color: white;
+        }
+
+        .total-display {
+            font-size: 1.25rem;
+            font-weight: bold;
+            background: rgba(168, 85, 247, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .total-count {
+            color: #c4b5fd;
+        }
+
+        .total-price {
+            color: #86efac;
+            margin-left: 1rem;
+        }
+
+        .right-controls {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .reset-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+        }
+
+        .reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .order-btn {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #86efac;
+        }
+
+        .order-btn:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            color: #c4b5fd;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-select option {
+            background: #1e293b;
+            color: white;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn.save {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            color: #86efac;
+        }
+
+        .modal-btn.save:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .modal-btn.cancel {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+        }
+
+        .modal-btn.cancel:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .items-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .left-controls {
+                justify-content: center;
+            }
+
+            .admin-controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <div class="login-title">🔐 System Zamówień</div>
+            <div class="login-buttons">
+                <button class="login-btn guest-btn" onclick="login('guest')">
+                    👤 Zaloguj jako Gość
+                </button>
+                <button class="login-btn admin-btn" onclick="login('admin')">
+                    ⚙️ Panel Administratora
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="main-app" id="mainApp">
+        <div class="container">
+            <!-- Header -->
+            <div class="glass-card">
+                <div class="header">
+                    <div class="header-left">
+                        <div class="header-icon">🧮</div>
+                        <h1>SYSTEM ZAMÓWIEŃ</h1>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-badge" id="userBadge">Gość</span>
+                        <button class="logout-btn" onclick="logout()">Wyloguj</button>
+                    </div>
+                </div>
+
+                <!-- Admin Panel -->
+                <div class="admin-panel" id="adminPanel">
+                    <div class="admin-controls">
+                        <button class="admin-btn-control" onclick="toggleEditMode()">
+                            <span id="editModeText">✏️ Włącz edycję</span>
+                        </button>
+                        <button class="admin-btn-control" onclick="exportData()">
+                            💾 Eksportuj dane
+                        </button>
+                        <button class="admin-btn-control" onclick="importData()">
+                            📥 Importuj dane
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="controls-section">
+                    <div class="left-controls">
+                        <select class="member-select" id="memberSelect" onchange="updatePrices()">
+                            <option value="H">Członek (H)</option>
+                            <option value="S">Supporter (S)</option>
+                        </select>
+                        
+                        <div class="total-display">
+                            Przedmioty: <span class="total-count" id="totalCount">0</span>
+                            <span class="total-price" id="totalPrice">0$</span>
+                        </div>
+                    </div>
+
+                    <div class="right-controls">
+                        <button class="action-btn reset-btn" onclick="resetAll()">
+                            🗑️ RESETUJ
+                        </button>
+                        <button class="action-btn order-btn" onclick="showOrderSummary()">
+                            📦 ZAMÓW
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KLAMOTY Section -->
+                <div class="category-header">
+                    <div class="category-title">🔫 KLAMOTY</div>
+                    <button class="add-item-btn admin-only" onclick="showAddItemModal('klamoty')" style="display: none;">
+                        ➕ Dodaj przedmiot
+                    </button>
+                </div>
+                <div class="items-grid" id="klamoty-grid"></div>
+
+                <!-- DODATKI Section -->
+                <div class="category-header">
+                    <div class="category-title">🛡️ DODATKI</div>
+                    <button class="add-item-btn admin-only" onclick="showAddItemModal('dodatki')" style="display: none;">
+                        ➕ Dodaj przedmiot
+                    </button>
+                </div>
+                <div class="items-grid" id="dodatki-grid"></div>
+
+                <!-- AMMO Section -->
+                <div class="category-header">
+                    <div class="category-title">🔹 AMMO</div>
+                    <button class="add-item-btn admin-only" onclick="showAddItemModal('ammo')" style="display: none;">
+                        ➕ Dodaj przedmiot
+                    </button>
+                </div>
+                <div class="items-grid" id="ammo-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div class="modal" id="addItemModal">
+        <div class="modal-content">
+            <div class="modal-title">➕ Dodaj nowy przedmiot</div>
+            <form id="addItemForm">
+                <div class="form-group">
+                    <label class="form-label">Kategoria</label>
+                    <select class="form-select" id="newItemCategory" required>
+                        <option value="">Wybierz kategorię</option>
+                        <option value="klamoty">🔫 Klamoty</option>
+                        <option value="dodatki">🛡️ Dodatki</option>
+                        <option value="ammo">🔹 Ammo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nazwa przedmiotu</label>
+                    <input type="text" class="form-input" id="newItemName" required placeholder="np. AK-47">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cena Supporter (S)</label>
+                    <input type="number" class="form-input" id="newItemPriceS" required placeholder="np. 250000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cena Członek (H)</label>
+                    <input type="number" class="form-input" id="newItemPriceH" required placeholder="np. 300000">
+                </div>
+                <div class="form-group" id="unitGroup" style="display: none;">
+                    <label class="form-label">Jednostka (dla ammo)</label>
+                    <input type="text" class="form-input" id="newItemUnit" placeholder="np. sztuka">
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="modal-btn save">💾 Dodaj</button>
+                    <button type="button" class="modal-btn cancel" onclick="closeModal()">❌ Anuluj</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let editMode = false;
+        
+        const itemData = {
+            klamoty: {
+                vintek: { name: 'Vintek', prices: { S: 270000, H: 300000 } },
+                pukawkaMk2: { name: 'Pukawka MK2', prices: { S: 240000, H: 270000 } },
+                ceram: { name: 'Ceram', prices: { S: 240000, H: 270000 } },
+                pistolMk2: { name: 'Pistol MK2', prices: { S: 240000, H: 270000 } },
+                heavyPistol: { name: 'Heavy Pistol', prices: { S: 380000, H: 400000 } },
+                pistolet: { name: 'Pistolet', prices: { S: 50000, H: 75000 } }
+            },
+            dodatki: {
+                kajdanki: { name: 'Kajdanki', prices: { S: 125000, H: 150000 } },
+                tlumikKrotka: { name: 'Tłumik broń krótka', prices: { S: 100000, H: 150000 } },
+                ciezkaKamizelka: { name: 'Ciężka Kamizelka (100%)', prices: { S: 200000, H: 250000 } }
+            },
+            ammo: {
+                ammo9mm: { name: 'Ammo 9mm', prices: { S: 1250, H: 1500 }, unit: 'sztuka' },
+                ammo45acp: { name: 'Ammo .45acp', prices: { S: 1250, H: 1500 }, unit: 'sztuka' }
+            }
+        };
+
+        let items = {};
+        let currentTier = 'H';
+
+        function login(userType) {
+            currentUser = userType;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            
+            if (userType === 'admin') {
+                document.getElementById('userBadge').textContent = 'Administrator';
+                document.getElementById('adminPanel').style.display = 'block';
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+            } else {
+                document.getElementById('userBadge').textContent = 'Gość';
+                document.getElementById('adminPanel').style.display = 'none';
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+            }
+            
+            initializeItems();
+            renderItems();
+            updateTotal();
+        }
+
+        function logout() {
+            currentUser = null;
+            editMode = false;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            resetAll();
+        }
+
+        function initializeItems() {
+            items = {};
+            Object.keys(itemData).forEach(category => {
+                Object.keys(itemData[category]).forEach(key => {
+                    items[key] = 0;
+                });
+            });
+        }
+
+        function formatPrice(price) {
+            if (price === 0) return 'Brak';
+            if (price >= 1000000) return (price / 1000000).toFixed(1) + 'M$';
+            if (price >= 1000) return (price / 1000).toFixed(0) + 'k$';
+            return price + '$';
+        }
+
+        function createItemCard(key, item, category) {
+            const currentPrice = item.prices[currentTier];
+            const isAdmin = currentUser === 'admin';
+            
+            return `
+                <div class="item-card">
+                    <div class="item-header">
+                        <div class="item-name ${isAdmin && editMode ? 'editable' : ''}" 
+                             ${isAdmin && editMode ? 'contenteditable="true"' : ''} 
+                             onblur="${isAdmin && editMode ? `updateItemName('${key}', this.textContent)` : ''}"
+                             onkeydown="${isAdmin && editMode ? 'if(event.key === \\'Enter\\') this.blur()' : ''}">${item.name}</div>
+                        ${isAdmin && editMode ? `<button class="delete-item-btn" onclick="deleteItem('${key}', '${category}')">🗑️ Usuń</button>` : ''}
+                    </div>
+                    <div class="item-controls">
+                        <button class="control-btn minus" onclick="updateItem('${key}', -1)">-</button>
+                        <span class="item-count" id="${key}">0</span>
+                        <button class="control-btn plus" onclick="updateItem('${key}', 1)">+</button>
+                    </div>
+                    <div class="price-info">
+                        <span class="price-tier">${currentTier}</span>
+                        <span class="price-value ${isAdmin && editMode ? 'editable' : ''}" 
+                              ${isAdmin && editMode ? 'contenteditable="true"' : ''} 
+                              onblur="${isAdmin && editMode ? `updateItemPrice('${key}', '${currentTier}', this.textContent)` : ''}"
+                              onkeydown="${isAdmin && editMode ? 'if(event.key === \\'Enter\\') this.blur()' : ''}">${formatPrice(currentPrice)}${item.unit ? '/' + item.unit : ''}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderItems() {
+            Object.keys(itemData).forEach(category => {
+                const grid = document.getElementById(category + '-grid');
+                if (grid) {
+                    grid.innerHTML = Object.keys(itemData[category])
+                        .map(key => createItemCard(key, itemData[category][key], category))
+                        .join('');
+                }
+            });
+        }
+
+        function updateItem(itemKey, change) {
+            items[itemKey] = Math.max(0, items[itemKey] + change);
+            const element = document.getElementById(itemKey);
+            if (element)
