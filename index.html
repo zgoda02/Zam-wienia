@@ -500,7 +500,15 @@ const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
       const pill=$('#qty-'+id); if(pill) pill.textContent=cart[id];
       updateTotals();
     }
-    function updateTotals(){
+    
+    function setQty(id, v){
+      let n = parseInt(v,10);
+      if (isNaN(n) || n < 0) n = 0;
+      cart[id] = n;
+      const pill = $('#qty-'+id); if(pill && pill.textContent != String(n)) pill.textContent = n;
+      updateTotals();
+    }
+function updateTotals(){
       let count=0,sum=0;
       Object.keys(items).forEach(cat=>{
         Object.keys(items[cat]).forEach(id=>{
@@ -546,7 +554,7 @@ const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
             </div>
             <div class="qty">
               <button class="btn btn-danger" onclick="changeQty('${id}',-1)">−</button>
-              <div class="pill" id="qty-${id}">${cart[id]||0}</div>
+              <div class="pill" id="qty-${id}" contenteditable="true" oninput="setQty('${id}', this.textContent)">${cart[id]||0}</div>
               <button class="btn btn-success" onclick="changeQty('${id}',1)">+</button>
               <div style="flex:1"></div>
               <button class="btn btn-ghost admin-only ${editMode?'':'hidden'}" onclick="deleteItem('${catKey}','${id}', this)">🗑️ Usuń</button>
@@ -739,6 +747,8 @@ const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
         else missing+=it.qty;
       });
       renderAll();
+      // sync inputs with restored quantities
+      Object.keys(cart).forEach(id=>{ const inp=document.getElementById('qtyInput-'+id); if(inp) inp.value = cart[id]||0; });
       showToast('Odtworzono koszyk','success', `Przywrócono: ${restored}${missing?`, brakujące: ${missing}`:''}`);
       closeHistory();
     }
