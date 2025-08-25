@@ -158,7 +158,7 @@
           <div class="brand-logo">🧮</div>
           <div>
             <div style="font-weight:900">System Zamówień</div>
-            <div class="kicker" style="opacity:.9">Wersja demo (frontend). Dane w przeglądarce.</div>
+            <div class="kicker" style="opacity:.9">Dane w przeglądarce.</div>
           </div>
         </div>
         <div class="row">
@@ -217,7 +217,7 @@
         </div>
         <div class="row">
           <button class="btn btn-danger" onclick="resetCart()">🧹 Wyzeruj koszyk</button>
-          <button class="btn btn-success" onclick="placeOrder()">✅ Złóż zamówienie (demo)</button>
+          <button class="btn btn-success" onclick="placeOrder()">✅ Złóż zamówienie</button>
         </div>
       </div>
 
@@ -288,7 +288,7 @@
         <button class="btn btn-ghost" onclick="closeAdminLogin()">Anuluj</button>
         <button class="btn btn-primary" onclick="submitAdminLogin()">Zaloguj</button>
       </div>
-      <div style="margin-top:10px;font-size:13px;color:#cbd5e1">Demo: dowolny login, hasło <b>admin123</b>.</div>
+      <div style="margin-top:10px;font-size:13px;color:#cbd5e1">Demo: dowolny login, hasło <b></b>.</div>
     </div>
   </div>
 
@@ -315,6 +315,85 @@
 
   <script>
     /* ===================== Helpers / State ===================== */
+    /* === Admin password verification (hashed) === */
+    const ADMIN_HASH = "e03860fc11924d115834b0f307ccf3863795a9380fa9599d29036a34aeffb902";
+    
+
+    // --- Minimal SHA-256 fallback (pure JS) ---
+    function sha256Hex_fallback(ascii) {
+      function rightRotate(value, amount){ return (value>>>amount) | (value<<(32-amount)); }
+      var mathPow=Math.pow; var maxWord=mathPow(2, 32); var lengthProperty='length';
+      var i, j; var result=''; var words=[]; var asciiBitLength=ascii[lengthProperty]*8;
+      var hash = sha256Hex_fallback.h = sha256Hex_fallback.h || [];
+      var k = sha256Hex_fallback.k = sha256Hex_fallback.k || [];
+      var primeCounter = k[lengthProperty];
+      if(!primeCounter){
+        var isPrime = {}; var candidate=2;
+        while(primeCounter<64){
+          var isP = !isPrime[candidate];
+          if(isP){
+            for(i=0;i<313;i+=candidate){ isPrime[i*candidate]=true; }
+            hash[primeCounter] = (mathPow(candidate, .5)*maxWord)|0;
+            k[primeCounter++] = (mathPow(candidate, 1/3)*maxWord)|0;
+          }
+          candidate++;
+        }
+      }
+      ascii += '\x80'; while(ascii[lengthProperty]%64-56) ascii+='\x00';
+      for(i=0;i<ascii[lengthProperty]; i++){
+        j=ascii.charCodeAt(i);
+        if(j>>8) return; // ASCII only
+        words[i>>2] |= j << ((3 - i)%4)*8;
+      }
+      words[words[lengthProperty]] = ((asciiBitLength/maxWord)|0);
+      words[words[lengthProperty]] = (asciiBitLength)
+      for(j=0; j<words[lengthProperty];){
+        var w = words.slice(j, j+=16); var oldHash = hash.slice(0);
+        for(i=0;i<64;i++){
+          var w15 = w[i - 15], w2 = w[i - 2];
+          var a = hash[0], e = hash[4];
+          var temp1 = hash[7]
+            + (rightRotate(e,6)^rightRotate(e,11)^rightRotate(e,25))
+            + ((e&hash[5])^((~e)&hash[6]))
+            + k[i]
+            + (w[i] = (i<16) ? w[i] : (
+                w[i-16]
+                + (rightRotate(w15,7)^rightRotate(w15,18)^(w15>>>3))
+                + w[i-7]
+                + (rightRotate(w2,17)^rightRotate(w2,19)^(w2>>>10))
+              )|0);
+          var temp2 = (rightRotate(a,2)^rightRotate(a,13)^rightRotate(a,22))
+            + ((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+          hash = [(temp1+temp2)|0].concat(hash); hash[4] = (hash[4]+temp1)|0;
+          hash.pop();
+        }
+        for(i=0;i<8;i++){ hash[i] = (hash[i]+oldHash[i])|0; }
+      }
+      for(i=0;i<8;i++){
+        for(j=3;j+1;j--){
+          var b = (hash[i]>>(j*8))&255;
+          result += ((b<16)?0:'') + b.toString(16);
+        }
+      }
+      return result;
+    }
+
+const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+    async function sha256Hex(v) {
+      try {
+        if (window.crypto && crypto.subtle) {
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+          const arr = Array.from(new Uint8Array(buf));
+          return arr.map(b=>b.toString(16).padStart(2,'0')).join('');
+        }
+      } catch (e) { /* fall back below */ }
+      return sha256Hex_fallback(unescape(encodeURIComponent(v)));
+    }
+    async function verifyPass(p) {
+      try { return (await sha256Hex(p)) === ADMIN_HASH; }
+      catch { return false; }
+    }
+
     const $ = (s)=>document.querySelector(s);
     const $$ = (s)=>Array.from(document.querySelectorAll(s));
 
@@ -379,11 +458,12 @@
     /* ===================== Auth & Tier ===================== */
     function openAdminLogin(){ $('#adminLoginModal').style.display='flex'; setTimeout(()=>$('#adminLogin').focus(),50); }
     function closeAdminLogin(){ $('#adminLoginModal').style.display='none'; }
-    function submitAdminLogin(){
+    async function submitAdminLogin(){
       const pass=$('#adminPass').value;
-      if(pass==='admin123'){ closeAdminLogin(); login('admin'); showToast('Zalogowano jako Administrator','success'); }
-      else showToast('Nieprawidłowe hasło (demo: admin123)','error');
-    }
+      const ok = await verifyPass(pass);
+      if(ok){ closeAdminLogin(); login('admin'); showToast('Zalogowano jako Administrator','success'); }
+      else { await sleep(400); showToast('Nieprawidłowe hasło','error'); }
+}
 
     function login(type){
       currentUser=type;
@@ -608,7 +688,7 @@
       const total = lines.reduce((a,b)=>a+b.subtotal,0);
       const order = { id:uid(), at:new Date().toISOString(), tier:currentTier, items:lines, total };
       addOrderToHistory(order);
-      showToast('Zamówienie złożone (demo)','success', `Suma: ${formatPrice(total)}`);
+      showToast('Zamówienie złożone','success', `Suma: ${formatPrice(total)}`);
       resetCart();
     }
     function getHistory(){
@@ -691,13 +771,13 @@
     }
 
     /* ===================== Boot ===================== */
-    (function boot(){
+    (function boot(){ try {
       items = JSON.parse(JSON.stringify(DEFAULT_DATA));
       initCart();
       $('#modalBackdrop').style.display='none';
       $('#adminLoginModal').style.display='none';
       $('#historyModal').style.display='none';
-    })();
+    } catch(e){ console.error('Init error', e); if (typeof showToast==='function') try{showToast('Błąd inicjalizacji','error');}catch{} } })();
   </script>
 </body>
 </html>
