@@ -143,6 +143,10 @@
       #historyWrap { max-height: 70vh; }
     }
 
+  
+    /* Przyciski w kolumnie Akcje w historii */
+    #historyWrap .btn { margin-right: 6px; }
+
   </style>
 </head>
 <body>
@@ -854,6 +858,10 @@ function updateTotals(){
       #historyWrap { max-height: 70vh; }
     }
 
+  
+    /* Przyciski w kolumnie Akcje w historii */
+    #historyWrap .btn { margin-right: 6px; }
+
   </style></head><body>
 <div class="wrap">
   <h1>🧾 Podsumowanie koszyka</h1>
@@ -949,7 +957,8 @@ function updateTotals(){
           <td>${o.tier}</td>
           <td>${formatPrice(o.total)}</td>
           <td>
-            <button class="btn btn-success" onclick='restoreOrder("${o.id}")'>Odtwórz</button>
+            <button class="btn btn-success" onclick='restoreOrder("${o.id}")' title="Odtwórz koszyk z tego zamówienia">Odtwórz</button>
+            <button class="btn btn-danger" onclick='deleteOrder("${o.id}")' title="Usuń to zamówienie">Usuń</button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -984,6 +993,18 @@ function updateTotals(){
       if(!confirm('Wyczyścić całą historię zamówień?')) return;
       saveHistory([]); renderHistory(); showToast('Historia wyczyszczona','info');
     }
+    
+    function deleteOrder(orderId){
+      const hist = getHistory();
+      const idx = hist.findIndex(o => o.id === orderId);
+      if (idx === -1){ showToast('Nie znaleziono zamówienia do usunięcia','error'); return; }
+      if (!confirm('Na pewno usunąć to zamówienie?')) return;
+      hist.splice(idx, 1);
+      saveHistory(hist);
+      renderHistory();
+      showToast('Usunięto zamówienie','success', orderId);
+    }
+
     function exportHistory(){
       const hist=getHistory();
       if(hist.length===0){ showToast('Brak historii do eksportu','error'); return; }
