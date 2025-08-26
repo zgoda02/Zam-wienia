@@ -104,7 +104,7 @@
 
     /* ================= Modals ================= */
     .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:60;padding:16px}
-    .modal{max-width:620px;width:100%}
+    .modal{max-width:960px;width:min(960px,96vw)}
     .field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
     .label{font-size:12px;opacity:.85}
     .input.dark{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.12)}
@@ -134,6 +134,15 @@
       .brand-logo{width:40px;height:40px;font-size:18px}
       .select{font-size:13px;padding:8px 10px}
     }
+  
+    /* === Wygodniejsze przeglądanie historii === */
+    #historyWrap table { table-layout: auto; width: 100%; }
+    #historyWrap th, #historyWrap td { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+    @media (max-width: 600px) {
+      .modal { max-width: 96vw; width: 96vw; }
+      #historyWrap { max-height: 70vh; }
+    }
+
   </style>
 </head>
 <body>
@@ -211,15 +220,25 @@
       </section>
 
       <!-- Summary -->
-      <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
-        <div class="totals" style="font-weight:900;background:rgba(168,85,247,.22);border:1px solid rgba(196,181,253,.3);padding:10px 14px;border-radius:10px">
-          Przedmioty: <span id="totalCount">0</span> &nbsp;|&nbsp; Suma: <span id="totalPrice">0$</span>
-        </div>
-        <div class="row">
-          <button class="btn btn-danger" onclick="resetCart()">🧹 Wyzeruj koszyk</button>
-          <button class="btn btn-success" onclick="placeOrder()">✅ Złóż zamówienie</button>
-        </div>
-      </div>
+      <div class="card" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+  <div class="totals" style="font-weight:900;background:rgba(168,85,247,.22);border:1px solid rgba(196,181,253,.3);padding:10px 14px;border-radius:10px">
+    Przedmioty: <span id="totalCount">0</span> &nbsp;|&nbsp; Suma: <span id="totalPrice">0$</span>
+  </div>
+  <div class="row">
+    <div class="row" style="gap:10px;align-items:center;margin-right:10px">
+      <label for="orderUserName" style="font-weight:800;color:#cbd5e1">Użytkownik</label>
+      <input id="orderUserName" class="input" style="min-width:220px" placeholder="np. Jan Kowalski" oninput="setOrderUser(this.value)" />
+    </div>
+
+    <button class="btn btn-danger" onclick="resetCart()">🧹 Wyzeruj koszyk</button>
+    <button class="btn btn-ghost" onclick="downloadCartHTML()">⬇️ Pobierz podsumowanie (HTML)</button>
+    <button class="btn btn-success" onclick="placeOrder()">✅ Złóż zamówienie</button>
+  </div>
+  <div id="cartSummaryList" class="card" style="flex:1 1 100%;background:rgba(255,255,255,.04)">
+    <h3 class="card-title">📋 Przedmioty do zakupu</h3>
+    <div id="cartSummaryTableWrap"></div>
+  </div>
+</div>
 
       <!-- Export preview -->
       <div id="exportPreview" class="card hidden">
@@ -296,7 +315,7 @@
   <div id="historyModal" class="modal-backdrop">
     <div class="card modal">
       <h3 class="card-title">📜 Historia zamówień</h3>
-      <div id="historyWrap" style="max-height:50vh;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px"></div>
+      <div id="historyWrap" style="max-height:78vh;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px"></div>
       <div class="row" style="justify-content:space-between;margin-top:12px">
         <div class="row">
           <button class="btn btn-ghost" onclick="exportHistory()">⬇️ Eksport historii</button>
@@ -464,6 +483,7 @@ const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
 }
 
     function login(type){
+      setTimeout(ensureUserInputMounted, 50);
       currentUser=type;
       $('#loginScreen').classList.add('hidden');
       $('#mainApp').classList.remove('hidden');
@@ -509,6 +529,8 @@ const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
       updateTotals();
     }
 function updateTotals(){
+      renderCartSummaryList();
+      ensureUserInputMounted();
       let count=0,sum=0;
       Object.keys(items).forEach(cat=>{
         Object.keys(items[cat]).forEach(id=>{
@@ -522,6 +544,8 @@ function updateTotals(){
       $('#totalPrice').textContent=formatPrice(sum);
     }
     function resetCart(){
+      renderCartSummaryList();
+      ensureUserInputMounted();
       Object.keys(cart).forEach(k=>cart[k]=0);
       $$('[id^="qty-"]').forEach(p=>p.textContent='0');
       updateTotals();
@@ -530,6 +554,8 @@ function updateTotals(){
 
     /* ===================== Render ===================== */
     function renderAll(){
+      renderCartSummaryList();
+      ensureUserInputMounted();
       renderCategory('klamoty','#cat-klamoty');
       renderCategory('dodatki','#cat-dodatki');
       renderCategory('ammo','#cat-ammo');
@@ -677,7 +703,204 @@ function updateTotals(){
     }
 
     /* ===================== Orders & History ===================== */
+
+    /* ===================== Order User (name) ===================== */
+    const ORDER_USER_KEY = 'orderUserName';
+    function setOrderUser(v){
+      try{ localStorage.setItem(ORDER_USER_KEY, (v||'').toString()); }catch{}
+    }
+    function getOrderUser(){
+      try{ return (localStorage.getItem(ORDER_USER_KEY)||'').toString().trim(); }catch{ return ''; }
+    }
+    function ensureUserInputMounted(){
+      const el = document.getElementById('orderUserName');
+      if(!el) return;
+      const saved = getOrderUser();
+      if(saved && el.value !== saved){ el.value = saved; }
+    }
+
+
+    /* ===================== Live Cart Summary ===================== */
+    function renderCartSummaryList(){
+      const wrap = document.getElementById('cartSummaryTableWrap');
+      if(!wrap) return;
+
+      // Zbierz pozycje z koszyka (bez filtra wyszukiwarki)
+      const lines = [];
+      let total = 0;
+      let totalQty = 0;
+      Object.keys(items).forEach(cat=>{
+        Object.keys(items[cat]).forEach(id=>{
+          const it = items[cat][id];
+          const q = cart[id]||0;
+          if(q>0){
+            const price = it.prices[currentTier]||0;
+            const sub = q*price;
+            total += sub;
+            totalQty += q;
+            lines.push({cat,id,name:it.name,unit:it.unit||'',qty:q,price,subtotal:sub});
+          }
+        });
+      });
+
+      if(lines.length===0){
+        wrap.innerHTML = '<div style="opacity:.85">Koszyk jest pusty.</div>';
+        return;
+      }
+
+      const rows = lines.map(l=>`
+        <tr>
+          <td>${escapeHtml(l.cat)}</td>
+          <td>${escapeHtml(l.name)}</td>
+          <td>${escapeHtml(l.unit||'')}</td>
+          <td style="text-align:right">${escapeHtml(String(l.qty))}</td>
+          <td style="text-align:right">${formatPrice(l.price)}</td>
+          <td style="text-align:right">${formatPrice(l.subtotal)}</td>
+        </tr>
+      `).join('');
+
+      wrap.innerHTML = `
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Kategoria</th>
+                <th>Nazwa</th>
+                <th>Jedn.</th>
+                <th style="text-align:right">Ilość</th>
+                <th style="text-align:right">Cena</th>
+                <th style="text-align:right">Suma</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr>
+                <th colspan="3" style="text-align:right">Razem</th>
+                <th style="text-align:right">${escapeHtml(String(totalQty))}</th>
+                <th></th>
+                <th style="text-align:right">${formatPrice(total)}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+    }
+
+    /* ===================== HTML Report (Download) ===================== */
+    function downloadCartHTML() {
+      const lines = [];
+      let totalH = 0, totalS = 0, totalQty = 0;
+
+      Object.keys(items).forEach(cat=>{
+        Object.keys(items[cat]).forEach(id=>{
+          const it = items[cat][id];
+          const q = cart[id]||0;
+          if(q>0){
+            const priceH = it.prices.H||0;
+            const priceS = it.prices.S||0;
+            const subH = q*priceH;
+            const subS = q*priceS;
+            totalH += subH; totalS += subS; totalQty += q;
+            lines.push({cat,id,name:it.name,unit:it.unit||'',qty:q,priceH,priceS,subH,subS});
+          }
+        });
+      });
+
+      if(lines.length===0){ showToast('Koszyk jest pusty — dodaj ilości', 'error'); return; }
+
+      const now = new Date();
+      const pad = n=> String(n).padStart(2,'0');
+      const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      const fmt = (n)=> (Math.round(n)||0).toLocaleString('pl-PL');
+      const m0 = (n)=> `${fmt(n)} $`;
+
+      const rows = lines.map(l=>`
+        <tr>
+          <td>${escapeHtml(l.cat)}</td>
+          <td>${escapeHtml(l.name)}</td>
+          <td>${escapeHtml(l.unit)}</td>
+          <td style="text-align:right">${l.qty}</td>
+          <td style="text-align:right">${m0(l.priceH)}</td>
+          <td style="text-align:right">${m0(l.priceS)}</td>
+          <td style="text-align:right">${m0(l.subH)}</td>
+          <td style="text-align:right">${m0(l.subS)}</td>
+        </tr>
+      `).join('');
+
+      const diff = totalH - totalS;
+      const avgH = totalQty ? (totalH/totalQty) : 0;
+      const avgS = totalQty ? (totalS/totalQty) : 0;
+      const savePerItem = totalQty ? (diff/totalQty) : 0;
+      const m2 = (n)=> `${(n||0).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} $`;
+
+      const html = `<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Podsumowanie koszyka — ${stamp}</title>
+<style>
+  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:#e5e7eb;
+       background:linear-gradient(135deg,#0b1220 0%,#5b1b84 50%,#0b1220 100%);} .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px}
+  h1{margin:0 0 6px} .kicker{opacity:.85;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08)} th{color:#c4b5fd;text-align:left}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:14px}
+  .metric{display:flex;justify-content:space-between;gap:12px;font-weight:800}
+  .metric .lab{color:#c4b5fd} .metric .val{background:rgba(255,255,255,.06);padding:6px 10px;border-radius:8px}
+
+    /* === Wygodniejsze przeglądanie historii === */
+    #historyWrap table { table-layout: auto; width: 100%; }
+    #historyWrap th, #historyWrap td { white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
+    @media (max-width: 600px) {
+      .modal { max-width: 96vw; width: 96vw; }
+      #historyWrap { max-height: 70vh; }
+    }
+
+  </style></head><body>
+<div class="wrap">
+  <h1>🧾 Podsumowanie koszyka</h1>
+  <div class="kicker">Wygenerowano ${now.toLocaleString('pl-PL')}</div>
+  <div class="grid">
+    <div class="card">
+      <div class="metric"><span class="lab">Łączna liczba przedmiotów</span><span class="val">${totalQty}</span></div>
+      <div class="metric"><span class="lab">Suma (H)</span><span class="val">${m0(totalH)}</span></div>
+      <div class="metric"><span class="lab">Suma (S)</span><span class="val">${m0(totalS)}</span></div>
+      <div class="metric"><span class="lab">Różnica H − S</span><span class="val">${m0(diff)}</span></div>
+    </div>
+    <div class="card">
+      <div class="metric"><span class="lab">Śr. cena / szt. (H)</span><span class="val">${m2(avgH)}</span></div>
+      <div class="metric"><span class="lab">Śr. cena / szt. (S)</span><span class="val">${m2(avgS)}</span></div>
+      <div class="metric"><span class="lab">Oszczędność / szt. (S vs H)</span><span class="val">${m2(savePerItem)}</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 6px">Pozycje</h2>
+    <table>
+      <thead><tr>
+        <th>Kategoria</th><th>Nazwa</th><th>Jedn.</th>
+        <th style="text-align:right">Ilość</th>
+        <th style="text-align:right">Cena H</th><th style="text-align:right">Cena S</th>
+        <th style="text-align:right">Suma H</th><th style="text-align:right">Suma S</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+</div>
+</body></html>`;
+
+      const blob = new Blob([html], {type: 'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `podsumowanie_koszyka_${stamp}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
     function placeOrder(){
+      const orderUser = getOrderUser();
+      ensureUserInputMounted();
+      if(!orderUser){ showToast('Podaj nazwę użytkownika składającego zamówienie','error'); return; }
       const lines=[];
       Object.keys(items).forEach(cat=>{
         Object.keys(items[cat]).forEach(id=>{
@@ -692,7 +915,7 @@ function updateTotals(){
       });
       if(lines.length===0){ showToast('Koszyk jest pusty','error'); return; }
       const total = lines.reduce((a,b)=>a+b.subtotal,0);
-      const order = { id:uid(), at:new Date().toISOString(), tier:currentTier, items:lines, total };
+      const order = { id:uid(), at:new Date().toISOString(), tier:currentTier, user:orderUser, items:lines, total };
       addOrderToHistory(order);
       showToast('Zamówienie złożone','success', `Suma: ${formatPrice(total)}`);
       resetCart();
@@ -712,7 +935,7 @@ function updateTotals(){
       if(hist.length===0){ wrap.innerHTML='<div class="card" style="background:rgba(255,255,255,.04)">Brak zamówień.</div>'; return; }
       const tbl=document.createElement('table');
       const thead=document.createElement('thead');
-      thead.innerHTML='<tr><th>Data</th><th>ID</th><th>Pozycje</th><th>Tier</th><th>Suma</th><th>Akcje</th></tr>';
+      thead.innerHTML='<tr><th>Data</th><th>ID</th><th>Użytkownik</th><th>Pozycje</th><th>Tier</th><th>Suma</th><th>Akcje</th></tr>';
       const tbody=document.createElement('tbody');
       hist.forEach(o=>{
         const tr=document.createElement('tr');
@@ -721,6 +944,7 @@ function updateTotals(){
         tr.innerHTML=`
           <td>${date}</td>
           <td>${o.id}</td>
+          <td>${escapeHtml(o.user||"-")}</td>
           <td>${count}</td>
           <td>${o.tier}</td>
           <td>${formatPrice(o.total)}</td>
@@ -731,7 +955,7 @@ function updateTotals(){
         tbody.appendChild(tr);
         const det=document.createElement('tr');
         const details = o.items.map(it=>`${escapeHtml(it.name)} × ${it.qty} — ${formatPrice(it.price)} = ${formatPrice(it.subtotal)}`).join('<br>');
-        det.innerHTML = `<td colspan="6" style="font-size:13px;opacity:.9">${details}</td>`;
+        det.innerHTML = `<td colspan="7" style="font-size:13px;opacity:.9"><b>Użytkownik:</b> ${escapeHtml(o.user||"-")}<br>${details}</td>`;
         tbody.appendChild(det);
       });
       tbl.appendChild(thead); tbl.appendChild(tbody); wrap.appendChild(tbl);
