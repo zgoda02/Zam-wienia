@@ -204,9 +204,7 @@
           <label class="btn btn-ghost" for="importFile">📥 Import JSON</label>
           <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)">
           <button class="btn btn-ghost" onclick="openHistory()">📜 Historia zamówień</button>
-        
-  <button class="btn btn-primary" onclick="openActivityClean()">📊 Aktywność</button>
-</div>
+        </div>
       </div>
 
       <!-- Categories -->
@@ -1049,6 +1047,7 @@ function updateTotals(){
 </section>
 <script>
 function openActivityClean(){
+  console.log('[AKTY] openActivityClean');
   try{ if (typeof currentUser!=='undefined' && currentUser!=='admin'){ if (typeof showToast==='function') showToast('Dostęp tylko dla administratora','error'); return; } }catch(e){}
   var el=document.getElementById('activityOverlayClean');
   var fr=document.getElementById('activityFrame');
@@ -1059,7 +1058,7 @@ function openActivityClean(){
       var html=new TextDecoder('utf-8').decode(bytes);
       var doc=fr.contentWindow.document;
       doc.open();
-      doc.write(html + '<script>(function(){try{var _s=localStorage.setItem.bind(localStorage);localStorage.setItem=function(k,v){try{_s(k,v);}catch(e){}try{parent&&parent.postMessage({__AKTY__:1,key:k,value:v},"*");}catch(e){}};Object.keys(localStorage).forEach(function(k){try{parent&&parent.postMessage({__AKTY__:1,key:k,value:localStorage.getItem(k)},"*");}catch(e){}});}catch(e){}})();<\/script>');
+      doc.write(html + '<script>(function(){try{console.log("[AKTY][IFRAME] patching localStorage");var _s=localStorage.setItem.bind(localStorage);localStorage.setItem=function(k,v){try{_s(k,v);}catch(e){console.warn("[AKTY][IFRAME] setItem error",e);}try{parent&&parent.postMessage({__AKTY__:1,key:k,value:v},"*");console.log("[AKTY][IFRAME] postMessage",k);}catch(e){console.warn("[AKTY][IFRAME] postMessage error",e);}};Object.keys(localStorage).forEach(function(k){try{parent&&parent.postMessage({__AKTY__:1,key:k,value:localStorage.getItem(k)},"*");}catch(e){}});}catch(e){console.warn(e)}})();<\/script>');
       doc.close();
       fr.dataset.loaded="1";
     }
@@ -1074,18 +1073,25 @@ function closeActivityClean(){var el=document.getElementById('activityOverlayCle
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
+console.log('[AKTY] init Firebase');
 const firebaseConfig={apiKey:"AIzaSyD7_CM77RzoicckJoQf4kuK55aZKyTWt1E",authDomain:"zamowienia-c15b1.firebaseapp.com",projectId:"zamowienia-c15b1",storageBucket:"zamowienia-c15b1.appspot.com",messagingSenderId:"96533080494",appId:"1:96533080494:web:e752962ef9f7cf4734dd1f"};
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(); const db=firebase.firestore();
-auth.signInAnonymously().catch(console.error);
+auth.onAuthStateChanged(u=>console.log('[AKTY] auth state', !!u));
+auth.signInAnonymously().catch(e=>console.error('[AKTY] signIn error',e));
 
 const MIRROR_COLLECTION="aktywnosc_mirror";
 function isAktywnoscKey(key){ return /^aktywnosc[:_]/i.test(key) || /week|tydzien/i.test(key) || key==='aktywnosc_v13'; }
-async function fbSet(key,value){ try{ await db.collection(MIRROR_COLLECTION).doc(encodeURIComponent(key)).set({value:value,ts:Date.now()},{merge:true}); }catch(e){ console.warn(e); } }
+async function fbSet(key,value){
+  console.log('[AKTY] fbSet', key);
+  try{ await db.collection(MIRROR_COLLECTION).doc(encodeURIComponent(key)).set({value:value,ts:Date.now()},{merge:true}); }
+  catch(e){ console.error('[AKTY] fbSet error',e); }
+}
 (async function seedFromFirestore(){
   try{
     await new Promise(res=>auth.onAuthStateChanged(()=>res()));
     const snap=await db.collection(MIRROR_COLLECTION).get();
+    console.log('[AKTY] seedFromFirestore count', snap.size);
     snap.forEach(doc=>{
       const key=decodeURIComponent(doc.id);
       const val=doc.data().value;
@@ -1093,12 +1099,19 @@ async function fbSet(key,value){ try{ await db.collection(MIRROR_COLLECTION).doc
         try { localStorage.setItem(key, typeof val==='string'?val:JSON.stringify(val)); } catch(e){}
       }
     });
-  }catch(e){ console.warn('Firebase seed error:',e); }
+  }catch(e){ console.warn('[AKTY] seed error',e); }
 })();
 
 // Bridge odbierający z iframe
 window.addEventListener('message', function(ev){
-  try{ var d=ev.data||{}; if(d&&d.__AKTY__===1&&typeof d.key==='string'){ if(isAktywnoscKey(d.key)){ var parsed=null; try{parsed=JSON.parse(d.value);}catch(_ ){} fbSet(d.key, parsed!==null?parsed:d.value); } } }catch(e){}
+  var d=ev.data||{};
+  if(d&&d.__AKTY__===1&&typeof d.key==='string'){
+    console.log('[AKTY] parent received', d.key);
+    if(isAktywnoscKey(d.key)){
+      var parsed=null; try{parsed=JSON.parse(d.value);}catch(_ ){} 
+      fbSet(d.key, parsed!==null?parsed:d.value);
+    }
+  }
 }, false);
 </script>
 </body>
