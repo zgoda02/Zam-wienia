@@ -1175,10 +1175,19 @@ async function addOrderToHistory(order){
 async function deleteOrder(orderId){
   await supa.from('orders').delete().eq('id', orderId);
 }
-</script>
-const SUPABASE_URL = "https://unovdhrzhdcstmjajgiy.supabase.co";   // <-- TUTAJ
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVub3ZkaHJ6aGRjc3RtamFqZ2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzOTk0MjgsImV4cCI6MjA3MTk3NTQyOH0.VNR9tg2gjXx2PwO2M9h53j20FZ-0tDF-BNrQGa3nOQA";                     // <-- TUTAJ
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// KONFIGURACJA — wklej swoje dane z Settings → API
+const SUPABASE_URL = "https://unovdhrzhdcstmjgjajy.supabase.co";  // <-- TWOJE
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // <-- TWÓJ
+
+// Inicjalizacja klienta – wciąż wewnątrz TEGO samego <script>
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const STATE_ID = 'state';
+
+// ... TU dalej zostaje reszta funkcji z bloku: loadState(), saveState(), getHistory(), addOrderToHistory(), itd.
+</script>
+<!-- ===== end Supabase block ===== -->
+
 </body>
 </html>
