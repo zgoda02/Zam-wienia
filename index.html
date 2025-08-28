@@ -1093,6 +1093,67 @@ function openActivityClean(){
       var doc = fr.contentWindow.document;
       doc.open(); doc.write(html); doc.close();
       fr.dataset.loaded = "1";
+      <script>
+  // ======== SYNC „Aktywność” <-> Supabase (w iframe) ========
+  (async function attachActivitySync(){
+    try{
+      const KEY_GUESSES = ['activityData','activity','aktywnosc','teamActivity']; // klucze, które najpewniej trzymają stan
+      const ACTIVITY_ID = 'activity';
+      const childWin = fr.contentWindow;
+      const childDoc = childWin.document;
+
+      // 1) Wczytaj z Supabase -> do localStorage w iframe (żeby stara logika mogła to odczytać)
+      async function pullFromDB(){
+        const { data, error } = await supa
+          .from('app_state')
+          .select('items')
+          .eq('id', ACTIVITY_ID)
+          .maybeSingle();
+        if (error) { console.error('activity pull error', error); return; }
+        const payload = (data && data.items) ? data.items : {};
+        const raw = JSON.stringify(payload);
+        for (const k of KEY_GUESSES){
+          try {
+            childWin.localStorage.setItem(k, raw);
+          } catch(e){}
+        }
+        // Odśwież UI w iframe (najprościej: przeładuj, bo to osobna appka)
+        // Jeśli nie chcesz pełnego reloadu, to możesz wywołać jej funkcję renderującą, jeśli taką posiada.
+        childWin.location.reload();
+      }
+
+      // 2) Patch: każda zmiana localStorage w iframe => zapis do Supabase
+      (function patchChildLocalStorage(){
+        const origSet = childWin.localStorage.setItem.bind(childWin.localStorage);
+        childWin.localStorage.setItem = function(k, v){
+          try { origSet(k, v); } catch(e){}
+          // Jeśli wygląda na klucz od aktywności — push do DB
+          const match = /activ|akty|team/i.test(k);
+          if (match){
+            try{
+              const obj = JSON.parse(v);
+              supa.from('app_state').upsert({ id: ACTIVITY_ID, items: obj, tier: 'H' });
+            }catch(e){}
+          }
+        };
+      })();
+
+      // 3) Realtime: zmiana w DB -> aktualizuj iframe localStorage i odśwież
+      if (!window.__activity_channel__){
+        window.__activity_channel__ = supa
+          .channel('activity_changes')
+          .on('postgres_changes',
+              { event:'*', schema:'public', table:'app_state', filter:`id=eq.${ACTIVITY_ID}` },
+              () => pullFromDB()
+          ).subscribe();
+      }
+
+      // 4) Pierwsze wczytanie z DB
+      await pullFromDB();
+    }catch(e){ console.error('attachActivitySync error', e); }
+  })();
+  // ======== /SYNC „Aktywność” ========
+</script>
     }
     el.classList.add('show'); el.setAttribute('aria-hidden','false');
     window.scrollTo(0,0);
