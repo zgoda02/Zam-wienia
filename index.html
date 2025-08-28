@@ -1,3 +1,40 @@
+-- Supabase schema for shared state + realtime orders
+
+create table if not exists app_state (
+  id text primary key,            -- constant 'state'
+  items jsonb not null,
+  tier text not null default 'H',
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists orders (
+  id text primary key,            -- use uid() on client for uniqueness
+  at timestamptz not null,
+  tier text not null,
+  user_name text,
+  items jsonb not null,
+  total numeric not null
+);
+
+alter table app_state enable row level security;
+alter table orders enable row level security;
+
+-- Public read (anonymous clients can read)
+create policy if not exists "read app_state" on app_state
+  for select using (true);
+
+create policy if not exists "read orders" on orders
+  for select using (true);
+
+-- Writes only for authenticated users (admins)
+create policy if not exists "write app_state (authenticated)" on app_state
+  for all to authenticated
+  using (true) with check (true);
+
+create policy if not exists "write orders (authenticated)" on orders
+  for insert, update, delete to authenticated
+  using (true) with check (true);
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
