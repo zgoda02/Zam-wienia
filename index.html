@@ -1176,6 +1176,10 @@ async function deleteOrder(orderId){
   await supa.from('orders').delete().eq('id', orderId);
 }
 </script>
-<!-- ===== end Supabase block ===== -->
+const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";   // <-- TUTAJ
+const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";                     // <-- TUTAJ
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const STATE_ID = 'state';
 </body>
 </html>
